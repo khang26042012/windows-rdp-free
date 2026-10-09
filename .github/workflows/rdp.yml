@@ -2,19 +2,13 @@ name: Windows RDP Free
 
 on:
   workflow_dispatch:
-    inputs:
-      ngrok_token:
-        description: 'Nhap Ngrok Authtoken'
-        required: true
-        default: ''
 
 env:
-  NGROK_AUTH_TOKEN: ${{ github.event.inputs.ngrok_token }}
   RDP_USER: admin
   RDP_PASS: KhangSMP@VN2026!
 
 jobs:
-  ngrok-rdp:
+  windows-rdp:
     name: Khoi Dong Windows RDP
     runs-on: windows-latest
     timeout-minutes: 360
@@ -28,36 +22,37 @@ jobs:
         New-LocalUser -Name $env:RDP_USER -Password (ConvertTo-SecureString "$env:RDP_PASS" -AsPlainText -Force) *>$null
         Add-LocalGroupMember -Group 'Administrators' -Member $env:RDP_USER
         Enable-LocalUser -Name $env:RDP_USER
-        Write-Host 'Setup user thanh cong!' -ForegroundColor Green
+        Write-Host 'User setup OK!' -ForegroundColor Green
 
-    - name: 2. Install and Configure Ngrok
+    - name: 2. Download Bore TCP Tunnel
       run: |
-        Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-        Expand-Archive ngrok.zip -DestinationPath .\ngrok
-        .\ngrok\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
-        Write-Host 'Authtoken da duoc cau hinh!' -ForegroundColor Green
+        Invoke-WebRequest -Uri 'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-pc-windows-msvc.zip' -OutFile 'bore.zip'
+        Expand-Archive bore.zip -DestinationPath . -Force
+        Write-Host 'Bore downloaded OK!' -ForegroundColor Green
 
-    - name: 3. Start Ngrok Tunnel
+    - name: 3. Start Tunnel and Print Connection URL
       run: |
-        Start-Process -FilePath '.\ngrok\ngrok.exe' -ArgumentList 'tcp 3389' -WindowStyle Hidden
-        $attempts = 0
-        $maxAttempts = 12
-        $ngrokUrl = $null
-        while (-not $ngrokUrl -and $attempts -lt $maxAttempts) {
-          Start-Sleep -Seconds 5
-          $attempts++
-          try {
-            $tunnels = Invoke-RestMethod -Uri http://localhost:4040/api/tunnels
-            $ngrokUrl = ($tunnels.tunnels | Where-Object { $_.proto -eq 'tcp' }).public_url
-          } catch {
-            Write-Host "Dang doi tunnel ($attempts/$maxAttempts)..."
+        $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
+        $assignedPort = $null
+        for ($i = 0; $i -lt 15; $i++) {
+          Start-Sleep -Seconds 2
+          if (Test-Path 'bore.log') {
+            $content = Get-Content 'bore.log' -Raw
+            Write-Host "Log: $content"
+            if ($content -match 'bore\.pub:(\d+)') {
+              $assignedPort = $matches[1]
+              break
+            }
           }
         }
-        $cleanUrl = $ngrokUrl -replace '^tcp://', ''
+        if (-not $assignedPort) {
+          if (Test-Path 'bore.err') { Get-Content 'bore.err' }
+          throw 'Khong lay duoc port bore.pub!'
+        }
         Write-Host ''
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host '🎉 MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
-        Write-Host "📱 DIA CHI PC NAME: $cleanUrl" -ForegroundColor Yellow
+        Write-Host "📱 DIA CHI PC NAME (Dan vao app dien thoai): bore.pub:$assignedPort" -ForegroundColor Yellow
         Write-Host "👤 USERNAME: $env:RDP_USER" -ForegroundColor Yellow
         Write-Host "🔑 PASSWORD: $env:RDP_PASS" -ForegroundColor Yellow
         Write-Host '==========================================================' -ForegroundColor Green
@@ -69,9 +64,9 @@ jobs:
         $interval = 60
         $endTime = (Get-Date).AddSeconds($duration)
         while ((Get-Date) -lt $endTime) {
-          $ngrokProcess = Get-Process -Name 'ngrok' -ErrorAction SilentlyContinue
-          if (-not $ngrokProcess) {
-            Write-Host 'Ngrok dung! Thoat.'
+          $boreProc = Get-Process -Name 'bore' -ErrorAction SilentlyContinue
+          if (-not $boreProc) {
+            Write-Host 'Bore stopped!'
             exit 1
           }
           Start-Sleep -Seconds $interval

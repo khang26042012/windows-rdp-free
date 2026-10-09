@@ -1,0 +1,60 @@
+name: Windows RDP Free
+
+on:
+  workflow_dispatch:
+    inputs:
+      ngrok_token:
+        description: 'Nhap Ngrok Authtoken'
+        required: true
+        default: ''
+
+jobs:
+  build:
+    name: Khoi Dong Windows RDP
+    runs-on: windows-2022
+    timeout-minutes: 360
+    steps:
+      - name: 1. Tai va Cai Dat Ngrok
+        run: |
+          Write-Host 'Dang tai Ngrok...' -ForegroundColor Cyan
+          Invoke-WebRequest -Uri 'https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip' -OutFile 'ngrok.zip'
+          Expand-Archive ngrok.zip
+          .\ngrok\ngrok.exe config add-authtoken "${{ github.event.inputs.ngrok_token }}"
+          Write-Host 'Da cai dat token Ngrok!' -ForegroundColor Green
+
+      - name: 2. Bat Dich Vu Remote Desktop
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name 'fDenyTSConnections' -Value 0
+          Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name 'UserAuthentication' -Value 0
+
+      - name: 3. Tao Tai Khoan Windows
+        run: |
+          $Password = ConvertTo-SecureString 'KhangSMP@2026' -AsPlainText -Force
+          New-LocalUser -Name 'khang' -Password $Password -FullName 'Phan Trong Khang' -Description 'User RDP'
+          Add-LocalGroupMember -Group 'Remote Desktop Users' -Member 'khang'
+          Add-LocalGroupMember -Group 'Administrators' -Member 'khang'
+          Write-Host 'Da tao user khang / KhangSMP@2026' -ForegroundColor Green
+
+      - name: 4. Khoi Chay Tunnel va Lay Dia Chi Ket Noi
+        run: |
+          Start-Process -FilePath '.\ngrok\ngrok.exe' -ArgumentList 'tcp 3389 --region ap' -NoNewWindow
+          Start-Sleep -Seconds 12
+          $Tunnels = (Invoke-RestMethod -Uri 'http://127.0.0.1:4040/api/tunnels').tunnels
+          $PublicUrl = $Tunnels[0].public_url
+          $CleanUrl = $PublicUrl -replace 'tcp://', ''
+          Write-Host '==========================================================' -ForegroundColor Green
+          Write-Host 'MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
+          Write-Host "DIA CHI PC NAME (Dan vao app dien thoai): $CleanUrl" -ForegroundColor Yellow
+          Write-Host 'USERNAME: khang' -ForegroundColor Yellow
+          Write-Host 'PASSWORD: KhangSMP@2026' -ForegroundColor Yellow
+          Write-Host '==========================================================' -ForegroundColor Green
+
+      - name: 5. Giu May Ao Chay Lien Tuc
+        run: |
+          $DurationSeconds = 21600
+          for ($i = 0; $i -lt $DurationSeconds; $i += 60) {
+            Start-Sleep -Seconds 60
+            $Minutes = [math]::Round($i / 60)
+            Write-Host "May ao dang hoat dong... ($Minutes / 360 phut)"
+          }

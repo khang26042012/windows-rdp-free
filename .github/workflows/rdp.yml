@@ -30,15 +30,14 @@ jobs:
         Expand-Archive bore.zip -DestinationPath . -Force
         Write-Host 'Bore downloaded OK!' -ForegroundColor Green
 
-    - name: 3. Start Tunnel and Print Connection URL
+    - name: 3. Start Tunnel va Duy Tri May Ao (6 Tieng)
       run: |
         $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
         $assignedPort = $null
-        for ($i = 0; $i -lt 15; $i++) {
+        for ($i = 0; $i -lt 20; $i++) {
           Start-Sleep -Seconds 2
           if (Test-Path 'bore.log') {
             $content = Get-Content 'bore.log' -Raw
-            Write-Host "Log: $content"
             if ($content -match 'bore\.pub:(\d+)') {
               $assignedPort = $matches[1]
               break
@@ -57,17 +56,15 @@ jobs:
         Write-Host "🔑 PASSWORD: $env:RDP_PASS" -ForegroundColor Yellow
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host ''
-
-    - name: 4. Keep Alive (6 Hours)
-      run: |
         $duration = 21600
         $interval = 60
         $endTime = (Get-Date).AddSeconds($duration)
         while ((Get-Date) -lt $endTime) {
-          $boreProc = Get-Process -Name 'bore' -ErrorAction SilentlyContinue
-          if (-not $boreProc) {
+          if ($process.HasExited) {
             Write-Host 'Bore stopped!'
             exit 1
           }
+          $elapsedMin = [math]::Round(((Get-Date).AddSeconds($duration) - $endTime).TotalMinutes * -1)
+          Write-Host "Máy ảo Windows RDP đang chạy bình thường... ($elapsedMin phút)"
           Start-Sleep -Seconds $interval
         }

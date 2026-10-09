@@ -30,10 +30,9 @@ jobs:
 
       - name: 3. Tao Tai Khoan Windows
         run: |
-          cmd /c "net user runneradmin KhangSMP#2026@Vip!"
-          cmd /c "net user khang KhangSMP#2026@Vip! /add /y"
-          cmd /c "net localgroup "Remote Desktop Users" khang /add"
-          cmd /c "net localgroup "Administrators" khang /add"
+          net user khang 'KhangSMP#2026@Vip!' /add /y
+          net localgroup 'Remote Desktop Users' khang /add
+          net localgroup 'Administrators' khang /add
           Write-Host 'Da thiet lap user khang / KhangSMP#2026@Vip!' -ForegroundColor Green
 
       - name: 4. Khoi Chay Tunnel va Lay Dia Chi Ket Noi

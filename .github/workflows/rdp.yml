@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  RDP_USER: admin
+  RDP_USER: khangmc
   RDP_PASS: KhangSMP@VN2026!
 
 jobs:
@@ -14,15 +14,26 @@ jobs:
     timeout-minutes: 360
 
     steps:
-    - name: 1. Setup Windows Remote Desktop
+    - name: 1. Setup Windows Remote Desktop (Fix NLA 0x7)
       run: |
+        # 1. Enable RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
         Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 1
+
+        # 2. Disable NLA (Fix Error 0x7 completely for mobile clients)
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Value 0
+        (Get-WmiObject -class 'Win32_TSGeneralSetting' -Namespace root\cimv2\terminalservices -Filter "TerminalName='RDP-tcp'").SetUserAuthenticationRequired(0)
+
+        # 3. Create fresh user khangmc
         New-LocalUser -Name $env:RDP_USER -Password (ConvertTo-SecureString "$env:RDP_PASS" -AsPlainText -Force) *>$null
         Add-LocalGroupMember -Group 'Administrators' -Member $env:RDP_USER
+        Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $env:RDP_USER
         Enable-LocalUser -Name $env:RDP_USER
-        Write-Host 'User setup OK!' -ForegroundColor Green
+
+        # 4. Restart TermService to apply
+        Restart-Service TermService -Force
+        Write-Host 'User khangmc setup thanh cong va da tat NLA!' -ForegroundColor Green
 
     - name: 2. Download Bore TCP Tunnel
       run: |
@@ -52,17 +63,24 @@ jobs:
         Write-Host ''
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host '🎉 MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
-        Write-Host "📱 DIA CHI PC NAME (Dan vao app dien thoai): bore.pub:$assignedPort" -ForegroundColor Yellow
+        Write-Host "📱 DIA CHI PC NAME: bore.pub:$assignedPort" -ForegroundColor Yellow
         Write-Host "👤 USERNAME: $env:RDP_USER" -ForegroundColor Yellow
         Write-Host "🔑 PASSWORD: $env:RDP_PASS" -ForegroundColor Yellow
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host ''
+        
+        # Ghi vao GitHub Step Summary de hien ngay ngoai trang chu run
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## 🎉 MÁY ẢO WINDOWS RDP ĐANG HOẠT ĐỘNG (6 TIẾNG)'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### 📱 PC NAME: `bore.pub:$assignedPort`"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Username:** `$env:RDP_USER`"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Password:** `$env:RDP_PASS`"
+        
         $duration = 21600
         $interval = 40
         $endTime = (Get-Date).AddSeconds($duration)
         while ((Get-Date) -lt $endTime) {
           if ($process.HasExited) {
-            Write-Host 'Bore connection dropped. Auto-reconnecting on same port...' -ForegroundColor Yellow
+            Write-Host 'Bore dropped. Auto-reconnecting on same port...' -ForegroundColor Yellow
             $process = Start-Process -FilePath '.\bore.exe' -ArgumentList "local 3389 --to bore.pub --port $assignedPort" -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
             Start-Sleep -Seconds 3
           }

@@ -14,74 +14,8 @@ jobs:
     timeout-minutes: 360
 
     steps:
-    - name: 1. Setup Windows Remote Desktop (Fix NLA 0x7)
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
-        Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Value 0
-        New-LocalUser -Name $env:RDP_USER -Password (ConvertTo-SecureString "$env:RDP_PASS" -AsPlainText -Force) *>$null
-        Add-LocalGroupMember -Group 'Administrators' -Member $env:RDP_USER
-        Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $env:RDP_USER
-        Enable-LocalUser -Name $env:RDP_USER
-        Restart-Service TermService -Force
-        Write-Host 'User khangmc setup thanh cong va da tat NLA!' -ForegroundColor Green
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-    - name: 2. Download Bore TCP Tunnel
-      run: |
-        Invoke-WebRequest -Uri 'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-pc-windows-msvc.zip' -OutFile 'bore.zip'
-        Expand-Archive bore.zip -DestinationPath . -Force
-        Write-Host 'Bore downloaded OK!' -ForegroundColor Green
-
-    - name: 3. Start Tunnel va Duy Tri May Ao 6 Tieng
-      run: |
-        Remove-Item 'bore.log' -ErrorAction SilentlyContinue
-        $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
-        $assignedPort = $null
-        for ($i = 0; $i -lt 20; $i++) {
-          Start-Sleep -Seconds 2
-          if (Test-Path 'bore.log') {
-            $content = Get-Content 'bore.log' -Raw
-            if ($content -match 'bore\.pub:(\d+)') {
-              $assignedPort = $matches[1]
-              break
-            }
-          }
-        }
-        if (-not $assignedPort) {
-          if (Test-Path 'bore.err') { Get-Content 'bore.err' }
-          throw 'Khong lay duoc port bore.pub!'
-        }
-        Write-Host ''
-        Write-Host '==========================================================' -ForegroundColor Green
-        Write-Host '🎉 MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
-        Write-Host "📱 DIA CHI PC NAME: bore.pub:$assignedPort" -ForegroundColor Yellow
-        Write-Host "👤 USERNAME: $env:RDP_USER" -ForegroundColor Yellow
-        Write-Host "🔑 PASSWORD: $env:RDP_PASS" -ForegroundColor Yellow
-        Write-Host '==========================================================' -ForegroundColor Green
-        Write-Host ''
-        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## 🎉 MÁY ẢO WINDOWS RDP ĐANG HOẠT ĐỘNG (6 TIẾNG)'
-        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### 📱 PC NAME: `bore.pub:$assignedPort`"
-        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Username:** `$env:RDP_USER`"
-        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Password:** `$env:RDP_PASS`"
-        $duration = 21600
-        $interval = 40
-        $endTime = (Get-Date).AddSeconds($duration)
-        while ((Get-Date) -lt $endTime) {
-          if ($process.HasExited) {
-            Write-Host 'Bore dropped. Auto-reconnecting on same port...' -ForegroundColor Yellow
-            $process = Start-Process -FilePath '.\bore.exe' -ArgumentList "local 3389 --to bore.pub --port $assignedPort" -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
-            Start-Sleep -Seconds 3
-          }
-          try {
-            $client = New-Object System.Net.Sockets.TcpClient
-            $asyncResult = $client.BeginConnect('bore.pub', [int]$assignedPort, $null, $null)
-            $wait = $asyncResult.AsyncWaitHandle.WaitOne(3000, $false)
-            if ($wait -and $client.Connected) {
-              $client.EndConnect($asyncResult)
-              $client.Close()
-            }
-          } catch {}
-          Write-Host 'Windows RDP dang hoat dong binh thuong...'
-          Start-Sleep -Seconds $interval
-        }
+    - name: Chay Windows RDP va Tunnel
+      run: pwsh -ExecutionPolicy Bypass -File .\start.ps1

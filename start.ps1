@@ -1,24 +1,15 @@
-# ==========================================================
-# 1. Setup Windows RDP & Tat NLA (Fix triet de loi 0x7)
-# ==========================================================
+# 1. Setup Windows RDP & Tat NLA
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
 Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Value 0
 
-# ==========================================================
-# 2. Toi uu hoa toc do & chong giat lag (60 FPS & 16-bit color)
-# ==========================================================
-# Set 16-bit Color Depth (Giam 60% bang thong, sieu muot tren 4G/WiFi dien thoai)
+# 2. Toi uu hoa toc do & 60 FPS
 reg add 'HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' /v 'ColorDepth' /t REG_DWORD /d 3 /f
 reg add 'HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' /v 'ColorDepth' /t REG_DWORD /d 3 /f
-
-# Tang toc DWM Frame Rate (60 FPS)
 reg add 'HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations' /v 'DWMFRAMEINTERVAL' /t REG_DWORD /d 15 /f
 
-# ==========================================================
-# 3. Tao User khangmc (Dac quyen Admin)
-# ==========================================================
+# 3. Tao User khangmc
 $user = 'khangmc'
 $pass = 'KhangSMP@VN2026!'
 New-LocalUser -Name $user -Password (ConvertTo-SecureString $pass -AsPlainText -Force) *>$null
@@ -26,18 +17,14 @@ Add-LocalGroupMember -Group 'Administrators' -Member $user
 Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $user
 Enable-LocalUser -Name $user
 Restart-Service TermService -Force
-Write-Host "User $user setup thanh cong!" -ForegroundColor Green
+Write-Host 'User setup thanh cong!' -ForegroundColor Green
 
-# ==========================================================
 # 4. Tai Bore TCP Tunnel
-# ==========================================================
 Invoke-WebRequest -Uri 'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-pc-windows-msvc.zip' -OutFile 'bore.zip'
 Expand-Archive bore.zip -DestinationPath . -Force
 Write-Host 'Bore downloaded OK!' -ForegroundColor Green
 
-# ==========================================================
 # 5. Khoi chay Tunnel & lay dia chi
-# ==========================================================
 Remove-Item 'bore.log' -ErrorAction SilentlyContinue
 $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
 $assignedPort = $null
@@ -59,21 +46,19 @@ if (-not $assignedPort) {
 
 Write-Host ''
 Write-Host '==========================================================' -ForegroundColor Green
-Write-Host '🎉 MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
-Write-Host "📱 DIA CHI PC NAME: bore.pub:$assignedPort" -ForegroundColor Yellow
-Write-Host "👤 USERNAME: $user" -ForegroundColor Yellow
-Write-Host "🔑 PASSWORD: $pass" -ForegroundColor Yellow
+Write-Host 'MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
+Write-Host ('DIA CHI PC NAME: bore.pub:' + $assignedPort) -ForegroundColor Yellow
+Write-Host ('USERNAME: ' + $user) -ForegroundColor Yellow
+Write-Host ('PASSWORD: ' + $pass) -ForegroundColor Yellow
 Write-Host '==========================================================' -ForegroundColor Green
 Write-Host ''
 
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## 🎉 MÁY ẢO WINDOWS RDP ĐANG HOẠT ĐỘNG (6 TIẾNG)'
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### 📱 PC NAME: `bore.pub:$assignedPort`"
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Username:** `$user`"
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Password:** `$pass`"
+Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## MAY AO WINDOWS RDP DANG HOAT DONG'
+Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('### PC NAME: bore.pub:' + $assignedPort)
+Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('- Username: ' + $user)
+Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('- Password: ' + $pass)
 
-# ==========================================================
 # 6. Duy tri may ao & tu dong hoi sinh neu rot mang
-# ==========================================================
 $duration = 21600
 $interval = 30
 $endTime = (Get-Date).AddSeconds($duration)

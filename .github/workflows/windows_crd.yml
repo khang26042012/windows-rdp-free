@@ -1,0 +1,56 @@
+name: Windows Chrome Remote Desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      crd_code:
+        description: 'Mã CRD Code'
+        required: true
+        default: '4/0AXlqoi6CIy28_u1vUzMYj_5nY8TElY956mYdfKpD9-z_y5JQpaSm2_iCq5KAKgLDpcLR0g'
+      pin:
+        description: 'Mã PIN 6 số'
+        required: true
+        default: '123456'
+
+jobs:
+  windows-crd:
+    name: Khoi Dong Windows Chrome Remote Desktop
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: 1. Cai Dat Chrome va Chrome Remote Desktop Host
+      run: |
+        Write-Host 'Dang tai Chrome Remote Desktop Host...' -ForegroundColor Cyan
+        Invoke-WebRequest -Uri 'https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi' -OutFile 'crd.msi'
+        Write-Host 'Dang cai dat msi...' -ForegroundColor Cyan
+        Start-Process msiexec.exe -ArgumentList '/i crd.msi /qn' -Wait
+        Write-Host 'Cai dat Chrome Remote Desktop Host thanh cong!' -ForegroundColor Green
+
+    - name: 2. Kich Hoat Chrome Remote Desktop Host
+      run: |
+        $crdExe = "${Env:ProgramFiles(x86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe"
+        if (-not (Test-Path $crdExe)) {
+          $crdExe = "${Env:ProgramFiles}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe"
+        }
+        Write-Host "Duong dan CRD exe: $crdExe" -ForegroundColor Cyan
+        $crdCode = '${{ github.event.inputs.crd_code }}'
+        $pin = '${{ github.event.inputs.pin }}'
+        $pcName = 'Windows-Khang'
+        
+        & $crdExe --code=$crdCode --redirect-url='https://remotedesktop.google.com/_/oauthredirect' --name=$pcName --pin=$pin
+        Write-Host '==========================================================' -ForegroundColor Green
+        Write-Host '🎉 MÁY ẢO WINDOWS ĐÃ KẾT NỐI VÀO TÀI KHOẢN GOOGLE!' -ForegroundColor Cyan
+        Write-Host "📱 Mở app Chrome Remote Desktop trên điện thoại và chọn máy: $pcName" -ForegroundColor Yellow
+        Write-Host "🔑 Mã PIN: $pin" -ForegroundColor Yellow
+        Write-Host '==========================================================' -ForegroundColor Green
+
+    - name: 3. Duy Tri May Ao Windows 6 Tieng
+      run: |
+        $duration = 21600
+        $interval = 60
+        $endTime = (Get-Date).AddSeconds($duration)
+        while ((Get-Date) -lt $endTime) {
+          Write-Host 'Máy ảo Windows đang chạy mượt mà 60 FPS qua Chrome Remote Desktop...'
+          Start-Sleep -Seconds $interval
+        }

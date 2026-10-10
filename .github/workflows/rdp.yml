@@ -16,21 +16,14 @@ jobs:
     steps:
     - name: 1. Setup Windows Remote Desktop (Fix NLA 0x7)
       run: |
-        # 1. Enable RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
         Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
-
-        # 2. Disable NLA completely (Fix Error 0x7 for mobile)
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 0
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'SecurityLayer' -Value 0
-
-        # 3. Create fresh user khangmc
         New-LocalUser -Name $env:RDP_USER -Password (ConvertTo-SecureString "$env:RDP_PASS" -AsPlainText -Force) *>$null
         Add-LocalGroupMember -Group 'Administrators' -Member $env:RDP_USER
         Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $env:RDP_USER
         Enable-LocalUser -Name $env:RDP_USER
-
-        # 4. Restart TermService to apply
         Restart-Service TermService -Force
         Write-Host 'User khangmc setup thanh cong va da tat NLA!' -ForegroundColor Green
 
@@ -67,13 +60,10 @@ jobs:
         Write-Host "🔑 PASSWORD: $env:RDP_PASS" -ForegroundColor Yellow
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host ''
-        
-        # Ghi vao GitHub Step Summary de hien ngay ngoai trang chu run
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## 🎉 MÁY ẢO WINDOWS RDP ĐANG HOẠT ĐỘNG (6 TIẾNG)'
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "### 📱 PC NAME: `bore.pub:$assignedPort`"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Username:** `$env:RDP_USER`"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- **Password:** `$env:RDP_PASS`"
-        
         $duration = 21600
         $interval = 40
         $endTime = (Get-Date).AddSeconds($duration)
@@ -92,7 +82,6 @@ jobs:
               $client.Close()
             }
           } catch {}
-          $elapsedMin = [math]::Round(((Get-Date).AddSeconds($duration) - $endTime).TotalMinutes * -1)
-          Write-Host "Windows RDP đang chạy... ($elapsedMin / 360 phút)"
+          Write-Host 'Windows RDP dang hoat dong binh thuong...'
           Start-Sleep -Seconds $interval
         }

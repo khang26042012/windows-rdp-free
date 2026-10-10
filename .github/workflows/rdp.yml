@@ -30,8 +30,9 @@ jobs:
         Expand-Archive bore.zip -DestinationPath . -Force
         Write-Host 'Bore downloaded OK!' -ForegroundColor Green
 
-    - name: 3. Start Tunnel va Duy Tri May Ao (6 Tieng)
+    - name: 3. Start Tunnel va Duy Tri May Ao 6 Tieng
       run: |
+        Remove-Item 'bore.log' -ErrorAction SilentlyContinue
         $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
         $assignedPort = $null
         for ($i = 0; $i -lt 20; $i++) {
@@ -57,14 +58,24 @@ jobs:
         Write-Host '==========================================================' -ForegroundColor Green
         Write-Host ''
         $duration = 21600
-        $interval = 60
+        $interval = 40
         $endTime = (Get-Date).AddSeconds($duration)
         while ((Get-Date) -lt $endTime) {
           if ($process.HasExited) {
-            Write-Host 'Bore stopped!'
-            exit 1
+            Write-Host 'Bore connection dropped. Auto-reconnecting on same port...' -ForegroundColor Yellow
+            $process = Start-Process -FilePath '.\bore.exe' -ArgumentList "local 3389 --to bore.pub --port $assignedPort" -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
+            Start-Sleep -Seconds 3
           }
+          try {
+            $client = New-Object System.Net.Sockets.TcpClient
+            $asyncResult = $client.BeginConnect('bore.pub', [int]$assignedPort, $null, $null)
+            $wait = $asyncResult.AsyncWaitHandle.WaitOne(3000, $false)
+            if ($wait -and $client.Connected) {
+              $client.EndConnect($asyncResult)
+              $client.Close()
+            }
+          } catch {}
           $elapsedMin = [math]::Round(((Get-Date).AddSeconds($duration) - $endTime).TotalMinutes * -1)
-          Write-Host "Máy ảo Windows RDP đang chạy bình thường... ($elapsedMin phút)"
+          Write-Host "Windows RDP đang chạy... ($elapsedMin / 360 phút)"
           Start-Sleep -Seconds $interval
         }

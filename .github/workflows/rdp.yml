@@ -5,7 +5,7 @@ on:
 
 env:
   RDP_USER: khangmc
-  RDP_PASS: KhangSMP@VN2026!
+  RDP_PASS: ${{ secrets.RDP_PASS || 'KhangSMP@VN2026!' }}
 
 jobs:
   windows-rdp:
@@ -22,7 +22,6 @@ jobs:
     - name: Chay Windows RDP va Tunnel
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PAT_TOKEN: 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
-        TAILSCALE_KEY: tskey-auth-k7Zof9V6d721CNTRL-4Jq4KaD43gWaZ7nG6877gW4qqP4TRbr7
+        TAILSCALE_KEY: ${{ secrets.TAILSCALE_KEY }}
         REPO_NAME: ${{ github.repository }}
       run: pwsh -ExecutionPolicy Bypass -File .\start.ps1

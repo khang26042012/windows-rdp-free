@@ -11,7 +11,7 @@ reg add 'HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations' /v '
 
 # 3. Tao User khangmc
 $user = 'khangmc'
-$pass = if ($env:RDP_PASS) { $env:RDP_PASS } else { 'KhangSMP@VN2026!' }
+$pass = $env:RDP_PASS
 New-LocalUser -Name $user -Password (ConvertTo-SecureString $pass -AsPlainText -Force) *>$null
 Add-LocalGroupMember -Group 'Administrators' -Member $user
 Add-LocalGroupMember -Group 'Remote Desktop Users' -Member $user

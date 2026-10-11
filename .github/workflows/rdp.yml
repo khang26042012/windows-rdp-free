@@ -5,7 +5,7 @@ on:
 
 env:
   RDP_USER: khangmc
-  RDP_PASS: ${{ secrets.RDP_PASS || 'KhangSMP@VN2026!' }}
+  RDP_PASS: ${{ secrets.RDP_PASS }}
 
 jobs:
   windows-rdp:

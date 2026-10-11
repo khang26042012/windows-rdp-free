@@ -12,10 +12,16 @@ jobs:
     name: Khoi Dong Windows RDP
     runs-on: windows-latest
     timeout-minutes: 360
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
     - name: Chay Windows RDP va Tunnel
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PAT_TOKEN: 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
+        REPO_NAME: ${{ github.repository }}
       run: pwsh -ExecutionPolicy Bypass -File .\start.ps1

@@ -19,12 +19,43 @@ Enable-LocalUser -Name $user
 Restart-Service TermService -Force
 Write-Host 'User setup thanh cong!' -ForegroundColor Green
 
-# 4. Tai Bore TCP Tunnel
+# 4. Cai dat & Khoi dong Tailscale
+$tsKey = if ($env:TAILSCALE_KEY) { $env:TAILSCALE_KEY } else { 'tskey-auth-k7Zof9V6d721CNTRL-4Jq4KaD43gWaZ7nG6877gW4qqP4TRbr7' }
+$tsIp = "Chua ket noi"
+if ($tsKey) {
+    try {
+        Write-Host 'Dang tai Tailscale MSI...' -ForegroundColor Cyan
+        Invoke-WebRequest -Uri 'https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi' -OutFile 'tailscale.msi'
+        Write-Host 'Dang cai dat Tailscale MSI...' -ForegroundColor Cyan
+        Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn /norestart' -Wait
+        Start-Sleep -Seconds 6
+        
+        $tsExe = "${Env:ProgramFiles}\Tailscale\tailscale.exe"
+        if (-not (Test-Path $tsExe)) {
+            $tsExe = "${Env:ProgramFiles(x86)}\Tailscale\tailscale.exe"
+        }
+        
+        if (Test-Path $tsExe) {
+            Write-Host "Dang ket noi vao mang Tailscale cua anh Khang..." -ForegroundColor Cyan
+            & $tsExe up --authkey=$tsKey --hostname='windows-khang' --unattended --accept-routes --reset
+            Start-Sleep -Seconds 4
+            $tsIp = (& $tsExe ip -4).Trim()
+            Write-Host "==========================================================" -ForegroundColor Green
+            Write-Host "🎉 TAILSCALE DA KET NOI THANH CONG!" -ForegroundColor Green
+            Write-Host "IP NOI BO TAILSCALE: $tsIp" -ForegroundColor Yellow
+            Write-Host "HOSTNAME: windows-khang" -ForegroundColor Yellow
+            Write-Host "==========================================================" -ForegroundColor Green
+        } else {
+            Write-Host "Khong tim thay tailscale.exe!" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Loi cai dat Tailscale: $_" -ForegroundColor Yellow
+    }
+}
+
+# 5. Tai Bore TCP Tunnel (Du phong song song)
 Invoke-WebRequest -Uri 'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-pc-windows-msvc.zip' -OutFile 'bore.zip'
 Expand-Archive bore.zip -DestinationPath . -Force
-Write-Host 'Bore downloaded OK!' -ForegroundColor Green
-
-# 5. Khoi chay Tunnel & lay dia chi
 Remove-Item 'bore.log' -ErrorAction SilentlyContinue
 $process = Start-Process -FilePath '.\bore.exe' -ArgumentList 'local 3389 --to bore.pub' -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
 $assignedPort = $null
@@ -39,26 +70,19 @@ for ($i = 0; $i -lt 30; $i++) {
     }
 }
 
-if (-not $assignedPort) {
-    if (Test-Path 'bore.err') { Get-Content 'bore.err' }
-    throw 'Khong lay duoc port bore.pub!'
-}
-
 Write-Host ''
 Write-Host '==========================================================' -ForegroundColor Green
 Write-Host 'MAY AO WINDOWS RDP DA SAN SANG KET NOI!' -ForegroundColor Cyan
-Write-Host ('DIA CHI PC NAME: bore.pub:' + $assignedPort) -ForegroundColor Yellow
-Write-Host ('USERNAME: ' + $user) -ForegroundColor Yellow
-Write-Host ('PASSWORD: ' + $pass) -ForegroundColor Yellow
+Write-Host "1. KET NOI SIEU TOC (KHONG BAO GIO ROT) QUA TAILSCALE:" -ForegroundColor Green
+Write-Host "   PC Name: $tsIp  (hoac: windows-khang)" -ForegroundColor Yellow
+Write-Host "2. KET NOI DU PHONG QUA BORE:" -ForegroundColor Green
+Write-Host "   PC Name: bore.pub:$assignedPort" -ForegroundColor Yellow
+Write-Host "USERNAME: $user" -ForegroundColor Yellow
+Write-Host "PASSWORD: $pass" -ForegroundColor Yellow
 Write-Host '==========================================================' -ForegroundColor Green
 Write-Host ''
 
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## MAY AO WINDOWS RDP DANG HOAT DONG'
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('### PC NAME: bore.pub:' + $assignedPort)
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('- Username: ' + $user)
-Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('- Password: ' + $pass)
-
-# 5.1 Auto publish connection info to GitHub Repo
+# 6. Auto publish connection info to GitHub Repo
 $token = if ($env:PAT_TOKEN) { $env:PAT_TOKEN } else { $env:GITHUB_TOKEN }
 $repo = if ($env:REPO_NAME) { $env:REPO_NAME } else { 'khang26042012/windows-rdp-free' }
 if ($token) {
@@ -68,7 +92,7 @@ if ($token) {
             Accept = 'application/vnd.github.v3+json'
             'User-Agent' = 'RDP-Runner'
         }
-        $infoText = "PC_NAME=bore.pub:$assignedPort`nUSER=$user`nPASS=$pass`nPORT=$assignedPort`nTIME=" + (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+        $infoText = "TAILSCALE_IP=$tsIp`nHOSTNAME=windows-khang`nBORE=bore.pub:$assignedPort`nUSER=$user`nPASS=$pass`nTIME=" + (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($infoText)
         $b64Content = [Convert]::ToBase64String($bytes)
         
@@ -79,7 +103,7 @@ if ($token) {
         } catch {}
 
         $putPayload = @{
-            message = "Update live RDP connection: bore.pub:$assignedPort"
+            message = "Update live RDP connection: Tailscale $tsIp | bore.pub:$assignedPort"
             content = $b64Content
         }
         if ($sha) {
@@ -93,25 +117,16 @@ if ($token) {
     }
 }
 
-# 6. Duy tri may ao & tu dong hoi sinh neu rot mang
+# 7. Duy tri may ao & tu dong hoi sinh bore neu rot mang
 $duration = 21600
 $interval = 30
 $endTime = (Get-Date).AddSeconds($duration)
 while ((Get-Date) -lt $endTime) {
-    if ($process.HasExited) {
+    if ($process -and $process.HasExited -and $assignedPort) {
         Write-Host 'Bore dropped. Reconnecting on same port...' -ForegroundColor Yellow
         $args = 'local 3389 --to bore.pub --port ' + $assignedPort
         $process = Start-Process -FilePath '.\bore.exe' -ArgumentList $args -RedirectStandardOutput 'bore.log' -RedirectStandardError 'bore.err' -PassThru -NoNewWindow
         Start-Sleep -Seconds 3
     }
-    try {
-        $client = New-Object System.Net.Sockets.TcpClient
-        $asyncResult = $client.BeginConnect('bore.pub', [int]$assignedPort, $null, $null)
-        $wait = $asyncResult.AsyncWaitHandle.WaitOne(2000, $false)
-        if ($wait -and $client.Connected) {
-            $client.EndConnect($asyncResult)
-            $client.Close()
-        }
-    } catch {}
     Start-Sleep -Seconds $interval
 }

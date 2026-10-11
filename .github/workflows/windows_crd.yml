@@ -6,7 +6,7 @@ on:
       crd_code:
         description: 'Mã CRD Code'
         required: true
-        default: '4/0AXlqoi6CIy28_u1vUzMYj_5nY8TElY956mYdfKpD9-z_y5JQpaSm2_iCq5KAKgLDpcLR0g'
+        default: ''
       pin:
         description: 'Mã PIN 6 số'
         required: true

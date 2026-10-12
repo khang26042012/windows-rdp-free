@@ -23,5 +23,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAILSCALE_KEY: ${{ secrets.TAILSCALE_KEY }}
+        RDP_PASS: ${{ secrets.RDP_PASS }}
         REPO_NAME: ${{ github.repository }}
       run: pwsh -ExecutionPolicy Bypass -File .\start.ps1

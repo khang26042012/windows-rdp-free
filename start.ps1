@@ -19,6 +19,99 @@ Enable-LocalUser -Name $user
 Restart-Service TermService -Force
 Write-Host 'User setup thanh cong!' -ForegroundColor Green
 
+# 3.5. TU DONG TAI VA KHOI PHUC GOLDEN PACK TU GOOGLE DRIVE
+$gdriveId = "1MmWF4PcpjKh4V2UDielgOFJfgiJPtP8D"
+if ($gdriveId) {
+    try {
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host ">>> DANG TAI GOLDEN PACK TU GOOGLE DRIVE (2.7 GB)..." -ForegroundColor Cyan
+        $cookieFile = "$env:TEMP\gdrive_cookie.txt"
+        $initHtml = curl.exe -c $cookieFile -s -L "https://drive.google.com/uc?export=download&id=$gdriveId"
+        $confirm = ""
+        $uuid = ""
+        if ($initHtml -match 'name="confirm"\s+value="([^"]+)"') { $confirm = $matches[1] }
+        if ($initHtml -match 'name="uuid"\s+value="([^"]+)"') { $uuid = $matches[1] }
+
+        if ($confirm -and $uuid) {
+            $downloadUrl = "https://drive.usercontent.google.com/download?id=$gdriveId&export=download&confirm=$confirm&uuid=$uuid"
+        } else {
+            $downloadUrl = "https://drive.google.com/uc?export=download&id=$gdriveId"
+        }
+
+        $zipPath = "C:\KHANG_GOLDEN_PACK.zip"
+        $stagingDir = "C:\KHANG_STAGING"
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+        if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
+
+        Write-Host "Dang download file zip tu CDN Google..." -ForegroundColor Cyan
+        curl.exe -b $cookieFile -L "$downloadUrl" -o "$zipPath"
+
+        if (Test-Path $zipPath) {
+            Write-Host "Giai nen Golden Pack..." -ForegroundColor Cyan
+            $7z = "C:\Program Files\7-Zip\7z.exe"
+            if (Test-Path $7z) {
+                & $7z x "$zipPath" -o"$stagingDir" -y | Out-Null
+            } else {
+                Expand-Archive -Path "$zipPath" -DestinationPath "$stagingDir" -Force
+            }
+
+            Write-Host "Trien khai Program Files & ProgramData..." -ForegroundColor Cyan
+            if (Test-Path "$stagingDir\ProgramFiles") {
+                Copy-Item "$stagingDir\ProgramFiles\*" -Destination "C:\Program Files" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            if (Test-Path "$stagingDir\ProgramFiles_x86") {
+                Copy-Item "$stagingDir\ProgramFiles_x86\*" -Destination "C:\Program Files (x86)" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            if (Test-Path "$stagingDir\ProgramData") {
+                Copy-Item "$stagingDir\ProgramData\*" -Destination "C:\ProgramData" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            Write-Host "Trien khai Public Desktop..." -ForegroundColor Cyan
+            if (Test-Path "$stagingDir\PublicDesktop") {
+                Copy-Item "$stagingDir\PublicDesktop\*" -Destination "C:\Users\Public\Desktop" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            if (Test-Path "$stagingDir\Desktop") {
+                Copy-Item "$stagingDir\Desktop\*" -Destination "C:\Users\Public\Desktop" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            # Import HKLM registry
+            if (Test-Path "$stagingDir\Registry\hklm_windhawk.reg") {
+                reg import "$stagingDir\Registry\hklm_windhawk.reg"
+            }
+
+            # Tao script tu dong nap cho khangmc khi dang nhap lan dau
+            $startupDir = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
+            if (-not (Test-Path $startupDir)) { New-Item -ItemType Directory -Path $startupDir -Force | Out-Null }
+            $startupCmd = @"
+@echo off
+if exist "C:\KHANG_STAGING" (
+    echo [Khang Cloud] Dang phuc hoi giao dien va cau hinh ca nhan...
+    reg import "C:\KHANG_STAGING\Registry\hkcu_software.reg" >nul 2>&1
+    reg import "C:\KHANG_STAGING\Registry\desktop.reg" >nul 2>&1
+    reg import "C:\KHANG_STAGING\Registry\themes.reg" >nul 2>&1
+    reg import "C:\KHANG_STAGING\Registry\accent.reg" >nul 2>&1
+    reg import "C:\KHANG_STAGING\Registry\taskband.reg" >nul 2>&1
+    if exist "C:\KHANG_STAGING\AppData_Roaming" xcopy "C:\KHANG_STAGING\AppData_Roaming" "%APPDATA%" /E /I /H /Y /Q >nul 2>&1
+    if exist "C:\KHANG_STAGING\AppData_Local" xcopy "C:\KHANG_STAGING\AppData_Local" "%LOCALAPPDATA%" /E /I /H /Y /Q >nul 2>&1
+    if exist "C:\KHANG_STAGING\Desktop" xcopy "C:\KHANG_STAGING\Desktop" "%USERPROFILE%\Desktop" /E /I /H /Y /Q >nul 2>&1
+    taskkill /f /im explorer.exe >nul 2>&1
+    start explorer.exe
+    if exist "C:\Program Files\Windhawk\windhawk.exe" start "" "C:\Program Files\Windhawk\windhawk.exe" -tray
+    del "%~f0"
+)
+"@
+            Set-Content -Path "$startupDir\khang_first_login.cmd" -Value $startupCmd -Encoding ASCII
+
+            # Xoa file zip de tiet kiem dung luong
+            Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+            Write-Host "🎉 NHOI GOLDEN PACK THANH CONG 100%!" -ForegroundColor Green
+            Write-Host "==========================================================" -ForegroundColor Cyan
+        }
+    } catch {
+        Write-Host "Loi restore Golden Pack: $_" -ForegroundColor Yellow
+    }
+}
+
 # 4. Cai dat & Khoi dong Tailscale
 $tsKey = $env:TAILSCALE_KEY
 $tsIp = "Chua ket noi"

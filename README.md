@@ -1,36 +1,27 @@
-# 🖥️ Hướng Dẫn Kết Nối Windows RDP Vào App 'Windows App' Trên Điện Thoại
+# 🖥️ Windows RDP Free Node (Auto-Login & Pre-loaded Golden Pack 8.5 GB)
 
-Hệ thống máy ảo **Windows 64-bit Desktop** miễn phí 100% chạy trên hạ tầng Microsoft Azure thông qua GitHub Actions.
-
----
-
-### 🔑 BƯỚC 1: LẤY MÃ NGROK TOKEN (Miễn phí - chỉ mất 10 giây)
-1. Mở trình duyệt vào trang: **https://dashboard.ngrok.com/signup**
-2. Bấm nút **'Continue with Google'** (đăng nhập bằng tài khoản Google của anh).
-3. Đăng nhập xong, vào trang: **https://dashboard.ngrok.com/get-started/your-authtoken**
-4. Bấm nút **Copy** dòng token của anh (có dạng kiểu: `2tXXXXXXXXXXXX_YYYYYYYYYYYYYY`).
+Repository máy ảo Windows miễn phí với tính năng **Auto-Login** và tự động nạp sẵn **Golden Pack 8.5 GB (kèm session Antigravity)** từ GitHub Release `v1.0.0`. Không còn phải đợi load profile khi đăng nhập RDP!
 
 ---
 
-### 🚀 BƯỚC 2: KHỞI ĐỘNG MÁY ẢO TRÊN GITHUB
+### 🚀 CÁCH KHỞI CHẠY MÁY ẢO
+
 1. Truy cập vào mục Actions: **https://github.com/khang26042012/windows-rdp-free/actions**
 2. Ở cột bên trái, bấm vào **'Windows RDP Free'**.
-3. Nhìn sang bên phải, bấm vào nút **'Run workflow'**.
-4. Dán mã Ngrok Token ở Bước 1 vào ô trống ➔ Bấm nút **Run workflow** màu xanh.
-5. Đợi khoảng 30 - 45 giây cho máy khởi động, bấm vào job đang chạy và xem mục **'4. Khoi Chay Tunnel va Lay Dia Chi Ket Noi'**.
-6. Màn hình sẽ hiện ra thông tin:
-   * **PC Name (Địa chỉ kết nối):** Ví dụ `0.tcp.ap.ngrok.io:14523`
-   * **Username:** `khang`
-   * **Password:** `KhangSMP@2026`
+3. Bấm vào nút **'Run workflow'** bên phải:
+   - **`tailscale_key`**: Dán mã Tailscale Auth Key (hoặc để trống nếu đã cấu hình trong GitHub Secrets).
+   - **`rdp_pass`**: Mật khẩu máy ảo (mặc định: `KhangSMP@2026`).
+   - **`hostname`**: Tên máy Tailscale (mặc định: `windows-khang`).
+4. Bấm nút màu xanh **'Run workflow'**.
 
 ---
 
-### 📱 BƯỚC 3: DÁN VÀO APP TRÊN ĐIỆN THOẠI (Windows App / Remote Desktop)
-1. Mở app **Windows App** (hoặc **Remote Desktop**) của Microsoft trên điện thoại.
-2. Bấm dấu **`+`** ở góc trên ➔ Chọn **Add PC**.
-3. Mục **PC Name:** Dán địa chỉ ở Bước 2 vào (ví dụ: `0.tcp.ap.ngrok.io:14523`).
-4. Mục **User Account:** Bấm Add User Account ➔ Nhập:
-   * Username: `khang`
-   * Password: `KhangSMP@2026`
-5. Bấm **Save**.
-6. Nhấp vào chiếc máy tính vừa hiện trên màn hình app để kết nối ➔ **Màn hình Windows 11 Desktop thật 100% sẽ hiện ra ngay trên điện thoại của anh!**
+### 📱 KẾT NỐI RDP
+
+- Sau khi khởi động xong (khoảng 30-45 giây), thông tin kết nối sẽ tự động cập nhật vào file [`RDP_ACTIVE.txt`](./RDP_ACTIVE.txt).
+- **PC Name (Địa chỉ kết nối):**
+  - Khuyên dùng: Nhập trực tiếp **IP Tailscale** hiển thị trong `RDP_ACTIVE.txt`.
+  - Dự phòng: `bore.pub:<port>` (khi không dùng Tailscale).
+- **Username:** `khangmc` *(hoặc dự phòng: `runneradmin`)*.
+- **Password:** Mật khẩu đã đặt (mặc định: `KhangSMP@2026`).
+- **Giao diện & Ứng dụng:** Đã nạp sẵn 100% ngay từ đầu (Desktop, Antigravity, Windhawk, Discord, Chrome, Firefox...) mà không cần chờ đợi.

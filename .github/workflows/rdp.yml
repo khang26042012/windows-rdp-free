@@ -2,10 +2,22 @@ name: Windows RDP Free
 
 on:
   workflow_dispatch:
+    inputs:
+      tailscale_key:
+        description: 'Nhap Tailscale Auth Key (De trong neu dung Secret)'
+        required: false
+        default: ''
+      rdp_pass:
+        description: 'Mat khau RDP (Mac dinh: KhangSMP@2026)'
+        required: false
+        default: 'KhangSMP@2026'
+      hostname:
+        description: 'Tailscale Hostname (Mac dinh: windows-khang)'
+        required: false
+        default: 'windows-khang'
 
 env:
   RDP_USER: khangmc
-  RDP_PASS: ${{ secrets.RDP_PASS }}
 
 jobs:
   windows-rdp:
@@ -22,7 +34,10 @@ jobs:
     - name: Chay Windows RDP va Tunnel
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAILSCALE_KEY: ${{ secrets.TAILSCALE_KEY }}
-        RDP_PASS: ${{ secrets.RDP_PASS }}
+        INPUT_TS_KEY: ${{ github.event.inputs.tailscale_key }}
+        SECRET_TS_KEY: ${{ secrets.TAILSCALE_KEY }}
+        INPUT_RDP_PASS: ${{ github.event.inputs.rdp_pass }}
+        SECRET_RDP_PASS: ${{ secrets.RDP_PASS }}
+        TS_HOSTNAME: ${{ github.event.inputs.hostname }}
         REPO_NAME: ${{ github.repository }}
       run: pwsh -ExecutionPolicy Bypass -File .\start.ps1

@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # KHANG CLOUD - GOLDEN PACK BUILDER (V1.0)
 # Dong goi toan bo Ung dung, AppData, Registry, Theme & Cau hinh ca nhan
 # ==============================================================================
@@ -74,24 +74,24 @@ $ErrorActionPreference = 'SilentlyContinue'
 $src = $PSScriptRoot
 
 Write-Host "Dang phuc hoi Desktop & Shortcuts..." -ForegroundColor Cyan
-Copy-Item "$srcDesktop*" -Destination "$env:USERPROFILEDesktop" -Recurse -Force
-if (Test-Path "$srcPublicDesktop") {
-    Copy-Item "$srcPublicDesktop*" -Destination "C:UsersPublicDesktop" -Recurse -Force
+Copy-Item "$src\Desktop\*" -Destination "$env:USERPROFILE\Desktop" -Recurse -Force
+if (Test-Path "$src\PublicDesktop") {
+    Copy-Item "$src\PublicDesktop\*" -Destination "C:\Users\Public\Desktop" -Recurse -Force
 }
 
 Write-Host "Dang phuc hoi Program Files..." -ForegroundColor Cyan
-Copy-Item "$srcProgramFiles*" -Destination "C:Program Files" -Recurse -Force
-Copy-Item "$srcProgramFiles_x86*" -Destination "C:Program Files (x86)" -Recurse -Force
-if (Test-Path "$srcProgramDataWindhawk") {
-    Copy-Item "$srcProgramDataWindhawk" -Destination "C:ProgramData" -Recurse -Force
+Copy-Item "$src\ProgramFiles\*" -Destination "C:\Program Files" -Recurse -Force
+Copy-Item "$src\ProgramFiles_x86\*" -Destination "C:\Program Files (x86)" -Recurse -Force
+if (Test-Path "$src\ProgramData\Windhawk") {
+    Copy-Item "$src\ProgramData\Windhawk" -Destination "C:\ProgramData" -Recurse -Force
 }
 
 Write-Host "Dang phuc hoi AppData..." -ForegroundColor Cyan
-Copy-Item "$srcAppData_Roaming*" -Destination "$env:APPDATA" -Recurse -Force
-Copy-Item "$srcAppData_Local*" -Destination "$env:LOCALAPPDATA" -Recurse -Force
+Copy-Item "$src\AppData_Roaming\*" -Destination "$env:APPDATA" -Recurse -Force
+Copy-Item "$src\AppData_Local\*" -Destination "$env:LOCALAPPDATA" -Recurse -Force
 
 Write-Host "Dang nap Registry..." -ForegroundColor Cyan
-Get-ChildItem "$srcRegistry*.reg" | ForEach-Object {
+Get-ChildItem "$src\Registry\*.reg" | ForEach-Object {
     reg import $_.FullName
 }
 
@@ -100,8 +100,8 @@ Stop-Process -Name explorer -Force
 Start-Sleep -Seconds 2
 Start-Process explorer.exe
 
-if (Test-Path "C:Program FilesWindhawkwindhawk.exe") {
-    Start-Process "C:Program FilesWindhawkwindhawk.exe" -ArgumentList "-tray"
+if (Test-Path "C:\Program Files\Windhawk\windhawk.exe") {
+    Start-Process "C:\Program Files\Windhawk\windhawk.exe" -ArgumentList "-tray"
 }
 Write-Host "🎉 PHUC HOI THANH CONG 100%!" -ForegroundColor Green
 '@
